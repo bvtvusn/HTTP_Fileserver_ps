@@ -263,7 +263,7 @@ input[type=submit]:hover, input[type=file]::file-selector-button:hover {
 </head>
 <body>
 	<header class="header">
-    <h1>Folder Browser</h1>
+    <h1>Powershell File Server</h1>
   </header>
 	<div class="container">		
 		<div class="card">
@@ -317,7 +317,7 @@ $html += @"
 				<h2>Server Info</h2>
 			</div>
 			<div class="card-body">			
-			<a href="/exit" class="btnlink" target="_blank">Stop server</a>
+			<a href="/exit" class="btnlink" >Stop server</a>
 			<p>Server adresses:</p>
 "@
 
@@ -334,8 +334,9 @@ $html += @"
 				<h2>Upload File</h2>
 			</div>
 			<div class="card-body">
-			<p>Current folder: "/"</p>							
 "@
+			$html+= "<p>Current folder: '$webAddress'</p>"						
+
 
 $html += "<form method='post' action='$curPath_Web' enctype='multipart/form-data'>"
 
@@ -352,9 +353,6 @@ $html += @"
 "@
     return $html
 }
-
-
-
 
 
 #--------- Adding IP adresses and starting HTTP listener ----------#
@@ -377,8 +375,6 @@ foreach ($ipAddress in $ipAddresses) {      # Loop through the IPv4 addresses an
 $listener.Start()
 
 
-
-
 # ----- Open web browser ----- #
 $enumerator = $listener.Prefixes.GetEnumerator()
 if ($enumerator.MoveNext()) {
@@ -390,35 +386,39 @@ if ($enumerator.MoveNext()) {
 }
 
 
-
-$basePathPC = "C:\Users\BjørnVegardTveraaen\Downloads"
+$basePathPC = $MyInvocation.MyCommand.Path | Split-Path -Parent
+Write-Host $basePathPC
+#$basePathPC = "C:\Users\BjørnVegardTveraaen\Downloads"
 $curPath_PC = ""
 $curPath_Web = ""
 
-
-
+Write-Host "Starting main loop."
 # ----- Main loop ----- #
 while ($listener.IsListening) {
     $context = $listener.GetContext()
     $request = $context.Request
     $response = $context.Response
+     Write-Output "request received:"
 
     $curPath_Web = $request.Url.LocalPath
     $curPath_PC  = Join-Path -Path $basePathPC -ChildPath $curPath_Web
-    Write-Output $curPath_PC
+    #Write-Output $curPath_PC
+    Write-Output $curPath_Web
 
     if ($request.HttpMethod -eq "GET") {
         #Write-Output $request.Url.AbsolutePath
-
-        
+                
 
         if($curPath_Web -eq "/exit"){
+            Write-Output "Stopping the server"
             # stop the server
             break
         }
         if (Test-Path $curPath_PC -PathType Container) 
         {
             # Display web page for current folder
+            Write-Output "Serving the web page
+            "
             $response.ContentType = "text/html"
             $response.StatusCode = 200
             $response.StatusDescription = "OK"
@@ -432,6 +432,8 @@ while ($listener.IsListening) {
         elseif (Test-Path $curPath_PC -PathType Leaf)
         {
             # serve file to the user.
+            Write-Output "Serving the file to the user"
+
             $filename = Split-Path -Leaf $curPath_PC
 			
             $response.ContentType = "application/octet-stream"
@@ -458,20 +460,19 @@ while ($listener.IsListening) {
             $response.StatusDescription = "Not Found"
             $response.Close()
         }
-
-
         
         
     }
     elseif ($request.HttpMethod -eq "POST") {
         # Store the uploaded file on the computer
+        Write-Output "Receiving file"
         Write-Output $curPath_Web
-        #$stream = $request.InputStream
-        #HTTPstreamToFile -reader $stream -saveFolder $destinationFolder
+        $stream = $request.InputStream
+        HTTPstreamToFile -reader $stream -saveFolder $curPath_PC
         #
-        #$response.StatusCode = 302
-        #$response.RedirectLocation = "/"
-        #$response.Close()
+        $response.StatusCode = 302
+        $response.RedirectLocation = "/"
+        $response.Close()
     }
 }
 $listener.Stop()
