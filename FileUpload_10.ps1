@@ -326,7 +326,21 @@ foreach ($url in $serverUrls)
     $html += "<a href='$url' target='_blank'>$url</a><br>"
 }
   
-$html += @"							
+$html += @"		
+
+
+
+ <form method="GET" action="?" >  
+    <button type="submit">Open firewall port</button>  
+    <input type="hidden" id="setfirewall" name="setfirewall" value="open" />
+</form method="GET" action="?">
+ <form>  
+    <button type="submit">Open firewall port</button>  
+    <input type="hidden" id="setfirewall" name="setfirewall" value="close" />
+</form>
+
+
+
 			</div>
 		</div>
 		<div class="card">
