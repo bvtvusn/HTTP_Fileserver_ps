@@ -326,7 +326,7 @@ $html += "<li><a href='$parentfolder'>..</a></li>"
 Get-ChildItem -Path $computerPath -Directory -Depth 0 | ForEach-Object {
     $linkpath = Join-Path -Path $curPath_Web -ChildPath $_.Name
     $html += "<li><a href='$linkpath'>$($_.Name)</a></li>"
-    Write-Host $_.Name
+    #Write-Host $_.Name
 }
 
 $html += @"
@@ -346,7 +346,7 @@ $html += @"
 Get-ChildItem -Path $computerPath -File -Depth 0 | ForEach-Object {
     $linkpath = Join-Path -Path $curPath_Web -ChildPath $_.Name
     $html += "<li><a href='$linkpath'>$($_.Name)</a><span class='filesize'>($(Convert-FileSize -Size $_.Length))</span></li>"
-    Write-Host $_.Name
+    #Write-Host $_.Name
 }
 
 $html += @"
