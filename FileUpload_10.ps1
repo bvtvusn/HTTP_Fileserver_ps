@@ -1,4 +1,24 @@
-﻿function Set-PsFirewallPort {
+﻿function Get-FirewallRuleState {
+    param (
+        [string]$RuleName
+    )
+
+    # Get the firewall rule with the specified name
+    $rule = Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue
+
+    if ($rule) {
+        #Write-Output $rule.Enabled
+        if ($rule.Enabled -eq $True) {
+            return "Open"
+        } else {
+            return "Closed"
+        }
+    } else {
+        return "Not Configured"
+    }
+}
+
+function Set-PsFirewallPort {
     param (
         [bool]$Enabled
     )
@@ -339,7 +359,7 @@ $html += @"
 				<h2>Server Info</h2>
 			</div>
 			<div class="card-body">			
-			<a href="/exit" class="btnlink" >Stop server</a>
+			
 			<p>Server adresses:</p>
 "@
 
@@ -364,9 +384,14 @@ $html += @"
     <input type="submit" value="Close firewall port" ></input>  
     <input type="hidden" id="setfirewall" name="setfirewall" value="close" />
 </form>
+"@
 
 
 
+$ruleState = Get-FirewallRuleState -RuleName "Powershell HTTP server port"
+$html += "<p>Firewall state: $ruleState</p>"
+
+$html += @"
 			</div>
 		</div>
 		<div class="card">
@@ -446,48 +471,45 @@ while ($listener.IsListening) {
     Write-Output $curPath_Web
 
     if ($request.HttpMethod -eq "GET") {
-        #Write-Output $request.Url.AbsolutePath
-                
-
-        #if($curPath_Web -eq "/exit"){
-        #    Write-Output "Stopping the server"
-        #    # stop the server
-        #    break
-        #}
+        
         if (Test-Path $curPath_PC -PathType Container) 
         {
 
             # ----- Check if the Get request contains any parameters ----- #
                         
             $queryString = $request.Url.Query
-            if (!([string]::IsNullOrWhiteSpace($queryString))) {
-                # Parse the query string parameters into a dictionary of key-value pairs
-                $queryParams = [System.Web.HttpUtility]::ParseQueryString($queryString)
-                # Loop through the key-value pairs and extract the keys and values
-                foreach ($key in $queryParams.Keys) {
-                    $value = $queryParams[$key]
+            $queryString = $queryString.TrimStart("?")
+            $parts = $queryString.Split("&")
 
-                    if($key -eq "setfirewall" -and $value -eq "open"){
-                        Write-Host "Opening firewall port"
-                        Set-PsFirewallPort -Enabled $true
-                    }
-                    
-                    if($key -eq "setfirewall" -and $value -eq "close"){
-                        Write-Host "Closing firewall port"
-                        Set-PsFirewallPort -Enabled $false
-                    }
-
-                    #if($key -eq "cmd" -and $value -eq "stop"){
-                    #    Write-Output "Stopping the server"
-                    #    # stop the server
-                    #    $listener.Stop()
-                    #}
-                    # Do something with the key-value pair, such as print it to the console
-                    #Write-Host "$($key): $value"
+            foreach ($part in $parts) {
+                $nameValue = $part.Split("=")
+                $name = [System.Uri]::UnescapeDataString($nameValue[0])
+                $value = if ($nameValue.Length -gt 1) {
+                    [System.Uri]::UnescapeDataString($nameValue[1])
+                } else {
+                    $null
                 }
+                
+                if($name -eq "setfirewall" -and $value -eq "open"){
+                    Write-Host "Opening firewall port"
+                    Set-PsFirewallPort -Enabled $true
+                }
+                    
+                if($name -eq "setfirewall" -and $value -eq "close"){
+                    Write-Host "Closing firewall port"
+                    Set-PsFirewallPort -Enabled $false
+                }
+
+                if($name -eq "cmd" -and $value -eq "stop"){
+                    Write-Output "Stopping the server"
+                    # stop the server
+                    $listener.Stop()
+                }
+
             }
-            else {
-                #Write-Host "The request doesn't contain any query string parameters."
+
+            if (!$listener.IsListening){
+                break # If listener was set to stop, break immediately to avoid unnecessary errors.
             }
             
 
