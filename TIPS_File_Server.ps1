@@ -305,7 +305,7 @@ input[type=submit]:hover, input[type=file]::file-selector-button:hover {
 </head>
 <body>
 	<header class="header">
-    <h1>Powershell File Server</h1>
+    <h1>TIPS - Powershell File Server</h1>
   </header>
 	<div class="container">		
 		<div class="card">
@@ -372,24 +372,30 @@ $html += @"
 
 
 <br>
- <form>  
+ <form method="GET" action="?">  
     <input type="submit" value="Stop server" ></input>  
     <input type="hidden" id="cmd" name="cmd" value="stop" />
 </form>
- <form method="GET" action="?" >  
-    <input type="submit" value="Open firewall port"></input>  
+<hr>
+"@
+
+$ruleState = Get-FirewallRuleState -RuleName "Powershell HTTP server port"
+$html += "<p>Firewall port: $ruleState</p>"
+
+$html += @"
+ <form method="GET" action="?" style="display: inline-block;">  
+    <input type="submit" value="Open firewall port" data-inline="true"></input>  
     <input type="hidden" id="setfirewall" name="setfirewall" value="open" />
-</form method="GET" action="?">
- <form>  
-    <input type="submit" value="Close firewall port" ></input>  
+</form >
+ <form method="GET" action="?" style="display: inline-block;">  
+    <input type="submit" value="Close firewall port" data-inline="true"></input>  
     <input type="hidden" id="setfirewall" name="setfirewall" value="close" />
 </form>
 "@
 
 
 
-$ruleState = Get-FirewallRuleState -RuleName "Powershell HTTP server port"
-$html += "<p>Firewall state: $ruleState</p>"
+
 
 $html += @"
 			</div>
