@@ -1,4 +1,26 @@
-﻿
+﻿function Set-PsFirewallPort {
+    param (
+        [bool]$Enabled
+    )
+
+    $ruleName = "Powershell HTTP server port"
+    $port = 8080
+
+    $existingRule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
+
+    if ($existingRule -eq $null) {
+        # Firewall rule doesn't exist yet, so create it
+        New-NetFirewallRule -DisplayName $ruleName -Direction Inbound -LocalPort $port -Protocol TCP -Action Allow
+        $existingRule = Get-NetFirewallRule -DisplayName $ruleName
+    }
+
+    if ($Enabled){
+        Set-NetFirewallRule -InputObject $existingRule -Enabled True
+    }else{
+        Set-NetFirewallRule -InputObject $existingRule -Enabled False
+    }    
+}
+
 function Convert-FileSize {
     param(
         [parameter(Mandatory=$true, ValueFromPipeline=$true)]
@@ -329,13 +351,17 @@ foreach ($url in $serverUrls)
 $html += @"		
 
 
-
+<br>
+ <form>  
+    <input type="submit" value="Stop server" ></input>  
+    <input type="hidden" id="cmd" name="cmd" value="stop" />
+</form>
  <form method="GET" action="?" >  
-    <button type="submit">Open firewall port</button>  
+    <input type="submit" value="Open firewall port"></input>  
     <input type="hidden" id="setfirewall" name="setfirewall" value="open" />
 </form method="GET" action="?">
  <form>  
-    <button type="submit">Open firewall port</button>  
+    <input type="submit" value="Close firewall port" ></input>  
     <input type="hidden" id="setfirewall" name="setfirewall" value="close" />
 </form>
 
@@ -423,14 +449,55 @@ while ($listener.IsListening) {
         #Write-Output $request.Url.AbsolutePath
                 
 
-        if($curPath_Web -eq "/exit"){
-            Write-Output "Stopping the server"
-            # stop the server
-            break
-        }
+        #if($curPath_Web -eq "/exit"){
+        #    Write-Output "Stopping the server"
+        #    # stop the server
+        #    break
+        #}
         if (Test-Path $curPath_PC -PathType Container) 
         {
-            # Display web page for current folder
+
+            # ----- Check if the Get request contains any parameters ----- #
+                        
+            $queryString = $request.Url.Query
+            if (!([string]::IsNullOrWhiteSpace($queryString))) {
+                # Parse the query string parameters into a dictionary of key-value pairs
+                $queryParams = [System.Web.HttpUtility]::ParseQueryString($queryString)
+                # Loop through the key-value pairs and extract the keys and values
+                foreach ($key in $queryParams.Keys) {
+                    $value = $queryParams[$key]
+
+                    if($key -eq "setfirewall" -and $value -eq "open"){
+                        Write-Host "Opening firewall port"
+                        Set-PsFirewallPort -Enabled $true
+                    }
+                    
+                    if($key -eq "setfirewall" -and $value -eq "close"){
+                        Write-Host "Closing firewall port"
+                        Set-PsFirewallPort -Enabled $false
+                    }
+
+                    #if($key -eq "cmd" -and $value -eq "stop"){
+                    #    Write-Output "Stopping the server"
+                    #    # stop the server
+                    #    $listener.Stop()
+                    #}
+                    # Do something with the key-value pair, such as print it to the console
+                    #Write-Host "$($key): $value"
+                }
+            }
+            else {
+                #Write-Host "The request doesn't contain any query string parameters."
+            }
+            
+
+
+
+
+
+
+            # ----- Display web page for current folder ----- #
+            # 
             Write-Output "Serving the web page
             "
             $response.ContentType = "text/html"
